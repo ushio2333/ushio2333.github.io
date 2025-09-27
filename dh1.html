@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信来电</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // 可自定义：微信主题颜色
+                        'wechat-green': '#07C160',  // 接听按钮颜色
+                        'wechat-red': '#F53F3F',    // 挂断按钮颜色
+                        'wechat-gray': '#F2F3F5',   // 次要文本颜色
+                        'wechat-dark': '#1C1C1E'    // 背景颜色
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pulse-ring {
+                animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            }
+            .pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .slide-up {
+                animation: slide-up 0.5s ease-out forwards;
+            }
+            .fade-out {
+                animation: fade-out 0.5s ease-out forwards;
+            }
+            .fade-in {
+                animation: fade-in 0.5s ease-out forwards;
+            }
+            .shake {
+                animation: shake 1s cubic-bezier(.36,.07,.19,.97) infinite;
+                transform: translate3d(0, 0, 0);
+                backface-visibility: hidden;
+                perspective: 1000px;
+            }
+        }
+        
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(7, 193, 96, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 15px rgba(7, 193, 96, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(7, 193, 96, 0);
+            }
+        }
+        
+        @keyframes slide-up {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fade-out {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+        
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes shake {
+            10%, 90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+            
+            20%, 80% {
+                transform: translate3d(2px, 0, 0);
+            }
+        
+            30%, 50%, 70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+            
+            40%, 60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-wechat-dark text-white min-h-screen overflow-hidden">
+    <!-- 电话铃声元素 -->
+    <audio id="ringtone" loop>
+        <!-- 可自定义：替换为您喜欢的铃声 -->
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-iphone-13-alarm-1003.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- 来电界面 -->
+    <div id="call-screen" class="relative h-screen flex flex-col items-center justify-between p-8">
+        <!-- 顶部时间 -->
+        <!-- 可自定义：时间显示 -->
+        <div class="text-xl font-light">15:30</div>
+        
+        <!-- 中间来电信息 -->
+        <div class="flex flex-col items-center">
+            <div class="relative mb-6">
+                <!-- 脉冲效果容器 -->
+                <div class="absolute inset-0 rounded-full bg-wechat-green/20 pulse-ring"></div>
+                <!-- 联系人头像 -->
+                <!-- 可自定义：联系人头像 -->
+                <img src="OIP-C.webp" alt="福利姬的头像" class="w-40 h-40 rounded-full object-cover border-4 border-white/20 relative z-10 shake">
+            </div>
+            
+            <!-- 联系人姓名 -->
+            <!-- 可自定义：联系人姓名 -->
+            <h1 class="text-3xl font-medium mb-2">福利姬</h1>
+            
+            <!-- 通话状态 -->
+            <div class="text-xl text-gray-300 pulse-slow">微信电话</div>
+            
+            <!-- 通话时长（初始隐藏，接通后显示） -->
+            <div id="call-duration" class="text-xl text-gray-300 mt-2 hidden">00:00</div>
+        </div>
+        
+        <!-- 底部操作按钮 -->
+        <div class="flex justify-between w-full max-w-xs mt-10">
+            <!-- 挂断按钮 -->
+            <button id="decline-btn" class="w-16 h-16 rounded-full bg-wechat-red flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 active:scale-95">
+                <i class="fa fa-phone fa-rotate-135 text-2xl"></i>
+            </button>
+            
+            <!-- 接听按钮 -->
+            <button id="accept-btn" class="w-16 h-16 rounded-full bg-wechat-green flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 active:scale-95">
+                <i class="fa fa-phone text-2xl"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 视频界面（初始隐藏） -->
+    <div id="video-screen" class="absolute inset-0 bg-black opacity-0 hidden">
+        <!-- 视频元素 - 已移除muted属性以启用声音 -->
+        <video id="call-video" class="w-full h-full object-cover" autoplay></video>
+        
+        <!-- 视频控制条 -->
+        <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent slide-up">
+            <div class="flex justify-center space-x-8">
+                <!-- 音量控制按钮 -->
+                <button id="volume-btn" class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 active:scale-95">
+                    <i class="fa fa-volume-up text-xl"></i>
+                </button>
+                
+                <!-- 挂断按钮 -->
+                <button id="video-hangup" class="w-14 h-14 rounded-full bg-wechat-red flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 active:scale-95">
+                    <i class="fa fa-phone fa-rotate-135 text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const callScreen = document.getElementById('call-screen');
+        const videoScreen = document.getElementById('video-screen');
+        const callVideo = document.getElementById('call-video');
+        const acceptBtn = document.getElementById('accept-btn');
+        const declineBtn = document.getElementById('decline-btn');
+        const videoHangup = document.getElementById('video-hangup');
+        const callDuration = document.getElementById('call-duration');
+        const ringtone = document.getElementById('ringtone');
+        const volumeBtn = document.getElementById('volume-btn');
+        
+        // 模拟通话时长计数器
+        let durationInterval;
+        let seconds = 0;
+        let isMuted = false;
+        
+        // 可自定义：视频源
+        const acceptVideoSource = '9月27日.mp4'; // 接听后播放的视频
+        const declineVideoSource = '9月27日.mp4'; // 挂断后播放的视频
+        
+        // 页面加载完成后准备播放铃声
+        document.addEventListener('DOMContentLoaded', () => {
+            // 为了绕过浏览器自动播放限制，需要用户交互才能播放音频
+            function startMedia() {
+                // 尝试播放铃声
+                ringtone.play().catch(error => {
+                    console.log('等待用户交互后播放铃声:', error);
+                });
+                
+                // 为视频播放做准备（提前加载）
+                callVideo.load();
+                
+                // 只需要一次交互即可，移除事件监听器
+                document.removeEventListener('click', startMedia);
+                document.removeEventListener('touchstart', startMedia);
+            }
+            
+            // 添加事件监听器，等待用户交互来启动媒体
+            document.addEventListener('click', startMedia);
+            document.addEventListener('touchstart', startMedia);
+        });
+        
+        // 更新通话时长显示
+        function updateDuration() {
+            seconds++;
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            callDuration.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        // 停止铃声
+        function stopRingtone() {
+            ringtone.pause();
+            ringtone.currentTime = 0;
+        }
+        
+        // 切换音量状态
+        function toggleVolume() {
+            isMuted = !isMuted;
+            callVideo.muted = isMuted;
+            
+            // 更新音量图标
+            const volumeIcon = volumeBtn.querySelector('i');
+            if (isMuted) {
+                volumeIcon.className = 'fa fa-volume-off text-xl';
+            } else {
+                volumeIcon.className = 'fa fa-volume-up text-xl';
+            }
+        }
+        
+        // 切换到视频界面
+        function switchToVideo(videoSource) {
+            // 停止铃声
+            stopRingtone();
+            
+            // 隐藏来电界面
+            callScreen.classList.add('fade-out');
+            
+            // 显示视频界面并播放视频
+            setTimeout(() => {
+                videoScreen.classList.remove('hidden');
+                videoScreen.classList.add('fade-in');
+                
+                // 设置视频源并播放
+                callVideo.src = videoSource;
+                
+                // 尝试播放视频（带声音）
+                callVideo.play().catch(error => {
+                    console.log('视频播放需要用户交互:', error);
+                    // 如果自动播放失败，添加点击事件来触发播放
+                    const playOnClick = () => {
+                        callVideo.play();
+                        videoScreen.removeEventListener('click', playOnClick);
+                    };
+                    videoScreen.addEventListener('click', playOnClick);
+                });
+                
+                // 如果是接听，开始计时
+                if (videoSource === acceptVideoSource) {
+                    callDuration.classList.remove('hidden');
+                    durationInterval = setInterval(updateDuration, 1000);
+                }
+            }, 500);
+        }
+        
+        // 接听按钮点击事件
+        acceptBtn.addEventListener('click', () => {
+            switchToVideo(acceptVideoSource);
+        });
+        
+        // 挂断按钮点击事件
+        declineBtn.addEventListener('click', () => {
+            switchToVideo(declineVideoSource);
+        });
+        
+        // 视频界面挂断按钮点击事件
+        videoHangup.addEventListener('click', () => {
+            // 停止视频和计时器
+            callVideo.pause();
+            clearInterval(durationInterval);
+            seconds = 0;
+            
+            // 隐藏视频界面
+            videoScreen.classList.remove('fade-in');
+            videoScreen.classList.add('fade-out');
+            
+            // 显示来电界面并重新开始铃声
+            setTimeout(() => {
+                videoScreen.classList.add('hidden');
+                callScreen.classList.remove('fade-out');
+                callDuration.classList.add('hidden');
+                
+                // 重置音量状态
+                isMuted = false;
+                const volumeIcon = volumeBtn.querySelector('i');
+                volumeIcon.className = 'fa fa-volume-up text-xl';
+                
+                // 重新播放铃声
+                ringtone.play().catch(error => {
+                    console.log('重新播放铃声失败:', error);
+                });
+            }, 500);
+        });
+        
+        // 音量按钮点击事件
+        volumeBtn.addEventListener('click', toggleVolume);
+    </script>
+</body>
+</html>
