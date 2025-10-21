@@ -13,7 +13,6 @@
             theme: {
                 extend: {
                     colors: {
-                        // 可自定义：微信主题颜色
                         'wechat-green': '#07C160',  // 接听按钮颜色
                         'wechat-red': '#F53F3F',    // 挂断按钮颜色
                         'wechat-gray': '#F2F3F5',   // 次要文本颜色
@@ -122,14 +121,12 @@
 <body class="font-inter bg-wechat-dark text-white min-h-screen overflow-hidden">
     <!-- 电话铃声元素 -->
     <audio id="ringtone" loop>
-        <!-- 可自定义：替换为您喜欢的铃声 -->
-        <source src="preview.mp3" type="audio/mpeg">
+        <source src="https://cdn2.ear0.com:3321/preview?soundid=35312&type=mp3" type="audio/mpeg">
     </audio>
     
     <!-- 来电界面 -->
     <div id="call-screen" class="relative h-screen flex flex-col items-center justify-between p-8">
         <!-- 顶部时间 -->
-        <!-- 可自定义：时间显示 -->
         <div class="text-xl font-light">15:30</div>
         
         <!-- 中间来电信息 -->
@@ -138,12 +135,10 @@
                 <!-- 脉冲效果容器 -->
                 <div class="absolute inset-0 rounded-full bg-wechat-green/20 pulse-ring"></div>
                 <!-- 联系人头像 -->
-                <!-- 可自定义：联系人头像 -->
-                <img src="OIP-C.webp" alt="福利姬的头像" class="w-40 h-40 rounded-full object-cover border-4 border-white/20 relative z-10 shake">
+                <img src="OIP-C.webp" alt="联系人头像" class="w-40 h-40 rounded-full object-cover border-4 border-white/20 relative z-10 shake">
             </div>
             
             <!-- 联系人姓名 -->
-            <!-- 可自定义：联系人姓名 -->
             <h1 class="text-3xl font-medium mb-2">福利姬</h1>
             
             <!-- 通话状态 -->
@@ -169,7 +164,7 @@
     
     <!-- 视频界面（初始隐藏） -->
     <div id="video-screen" class="absolute inset-0 bg-black opacity-0 hidden">
-        <!-- 视频元素 - 已移除muted属性以启用声音 -->
+        <!-- 视频元素 -->
         <video id="call-video" class="w-full h-full object-cover" autoplay></video>
         
         <!-- 视频控制条 -->
@@ -205,41 +200,33 @@
         let seconds = 0;
         let isMuted = false;
         
-        // 可自定义：视频源
+        // 视频源
         const acceptVideoSource = '9月27日.mp4'; // 接听后播放的视频
         const declineVideoSource = '9月27日.mp4'; // 挂断后播放的视频
-
-        // 提前创建视频元素并预加载（而非依赖页面中已有元素的load方法）
-        const acceptVideo = new Video();
-        const declineVideo = new Video();
-
-        acceptVideo.src = acceptVideoSource;
-        declineVideo.src = declineVideoSource;
-        acceptVideo.preload = 'auto'; // 自动预加载（根据浏览器策略优化）
-        declineVideo.preload = 'auto';
         
-        // 页面加载完成后准备播放铃声
+        // 页面加载完成后初始化铃声播放逻辑
         document.addEventListener('DOMContentLoaded', () => {
-            // 为了绕过浏览器自动播放限制，需要用户交互才能播放音频
-            function startMedia() {
-                // 尝试播放铃声
+            // 尝试初始播放铃声，处理浏览器自动播放限制
+            function initRingtone() {
                 ringtone.play().catch(error => {
-                    console.log('等待用户交互后播放铃声:', error);
+                    console.log('初始自动播放被阻止，等待用户交互:', error);
+                    // 监听用户首次交互（点击或触摸）触发铃声
+                    const triggerPlay = () => {
+                        ringtone.play().catch(err => console.log('交互后播放失败:', err));
+                        // 移除监听，避免重复触发
+                        document.removeEventListener('click', triggerPlay);
+                        document.removeEventListener('touchstart', triggerPlay);
+                    };
+                    // 绑定用户交互事件（点击或触摸屏幕任何位置）
+                    document.addEventListener('click', triggerPlay);
+                    document.addEventListener('touchstart', triggerPlay);
                 });
-                
-                // 为视频播放做准备（提前加载）
-                callVideo.load();
-                
-                // 只需要一次交互即可，移除事件监听器
-                document.removeEventListener('click', startMedia);
-                document.removeEventListener('touchstart', startMedia);
             }
-            
-            // 添加事件监听器，等待用户交互来启动媒体
-            document.addEventListener('click', startMedia);
-            document.addEventListener('touchstart', startMedia);
+
+            // 初始化铃声
+            initRingtone();
         });
-        
+       
         // 更新通话时长显示
         function updateDuration() {
             seconds++;
@@ -284,10 +271,9 @@
                 // 设置视频源并播放
                 callVideo.src = videoSource;
                 
-                // 尝试播放视频（带声音）
+                // 尝试播放视频
                 callVideo.play().catch(error => {
                     console.log('视频播放需要用户交互:', error);
-                    // 如果自动播放失败，添加点击事件来触发播放
                     const playOnClick = () => {
                         callVideo.play();
                         videoScreen.removeEventListener('click', playOnClick);
@@ -335,7 +321,7 @@
                 const volumeIcon = volumeBtn.querySelector('i');
                 volumeIcon.className = 'fa fa-volume-up text-xl';
                 
-                // 重新播放铃声
+                // 重新播放铃声（此时已有用户交互记录，可正常播放）
                 ringtone.play().catch(error => {
                     console.log('重新播放铃声失败:', error);
                 });
@@ -346,7 +332,6 @@
         volumeBtn.addEventListener('click', toggleVolume);
     </script>
 </body>
-
 </html>
 
 
