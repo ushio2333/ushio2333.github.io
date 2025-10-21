@@ -208,6 +208,15 @@
         // 可自定义：视频源
         const acceptVideoSource = '9月27日.mp4'; // 接听后播放的视频
         const declineVideoSource = '9月27日.mp4'; // 挂断后播放的视频
+
+        // 提前创建视频元素并预加载（而非依赖页面中已有元素的load方法）
+        const acceptVideo = new Video();
+        const declineVideo = new Video();
+
+        acceptVideo.src = acceptVideoSource;
+        declineVideo.src = declineVideoSource;
+        acceptVideo.preload = 'auto'; // 自动预加载（根据浏览器策略优化）
+        declineVideo.preload = 'auto';
         
         // 页面加载完成后准备播放铃声
         document.addEventListener('DOMContentLoaded', () => {
@@ -337,4 +346,5 @@
         volumeBtn.addEventListener('click', toggleVolume);
     </script>
 </body>
+
 </html>
